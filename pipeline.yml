@@ -1,0 +1,31 @@
+name: CI/CD Pipeline Calculator 
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Login to Azure Container Registry
+      uses: docker/login-action@v2
+      with:
+      
+        registry: judevops.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+
+    - name: Build Docker image
+      run: docker build -t judevops.azurecr.io/mothana-calculator BE
+
+
+    - name: Push Docker image
+      run: docker push judevops.azurecr.io/mothana-calculator
