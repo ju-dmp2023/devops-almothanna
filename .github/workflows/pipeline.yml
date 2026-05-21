@@ -9,23 +9,51 @@ jobs:
   build_and_push:
     runs-on: ubuntu-latest
 
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-playwright requests openapi-python-client
+        playwright install chromium
+
+    - name: Start Application via Docker Compose
+      run: |
+        docker compose -p webcalculator up -d
+        sleep 10 # Allow time for both containers to fully start
+
+    - name: Run All Tests
+      env:
+        PYTHONPATH: ".:./test"
+      run: |
+        pytest --junit-xml=report.xml
+
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v4
+      if: success() || failure()
+      with:
+        report_paths: 'report.xml'
+
     - name: Login to Azure Container Registry
+      if: success()
       uses: docker/login-action@v2
       with:
-      
         registry: judevops.azurecr.io
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
+    - name: Build Backend Docker image
+      if: success()
+      run: docker build -t judevops.azurecr.io/mothana-calculator .
 
-    - name: Build Docker image
-      run: docker build -t judevops.azurecr.io/mothana-calculator BE
-
-
-    - name: Push Docker image
+    - name: Push Backend Docker image
+      if: success()
       run: docker push judevops.azurecr.io/mothana-calculator
